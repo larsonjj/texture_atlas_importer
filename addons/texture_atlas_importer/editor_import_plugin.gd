@@ -3,10 +3,11 @@ extends EditorImportPlugin
 
 var AtlasParser = preload("res://addons/texture_atlas_importer/atlas.gd")
 var import_options_index = 0
-var import_options_preset = AtlasParser.FORMAT_TEXTURE_JSON
+var import_options_preset = AtlasParser.FORMAT_TEXTURE_PACKER_JSON
 var XML_NAME = "xml_map"
 var JSON_NAME = "json_map"
 var MESSAGE_PREFIX = "Atlas Importer -> "
+var atlas_texture_extension = ".atlastex"
 
 func get_importer_name():
 	return "io.jakelarson.godot.texture_atlas_importer"
@@ -21,7 +22,7 @@ func get_save_extension():
 	return "tex"
 
 func get_resource_type():
-	return "Texture";
+	return "Texture"
 
 func get_preset_count():
 	return 3
@@ -30,25 +31,25 @@ func get_preset_name(i):
 	var json = "Texture Packer (JSON Hash)"
 	var xml = "Texture Packer (Generic XML)"
 	var kenney_xml = "Kenney Assets Spritesheet (XML)"
-	var default = json
+
 	if i == 0:
-		return default
+		return json
 	elif i == 1:
 		return xml
 	elif i == 2:
 		return kenney_xml
 	else:
-		return default
+		return json
 
 func get_option_visibility(option, options):
 	if import_options_index == 0 and option == XML_NAME:
-		import_options_preset = AtlasParser.FORMAT_TEXTURE_JSON
+		import_options_preset = AtlasParser.FORMAT_TEXTURE_PACKER_JSON
 		return false
 	elif import_options_index > 0 and option == JSON_NAME:
 		if import_options_index == 1:
 			import_options_preset = AtlasParser.FORMAT_TEXTURE_PACKER_XML
-		if import_options_index == 1:
-			import_options_preset = AtlasParser.FORMAT_KENNEY_SPRITESHEET
+		if import_options_index == 2:
+			import_options_preset = AtlasParser.FORMAT_KENNEY_XML
 		return false
 	else:
 		return true
@@ -75,10 +76,10 @@ func get_import_options(i):
 	}]
 
 func _getFileName(path):
-	var fileName = path.substr(path.find_last("/")+1, path.length() - path.find_last("/")-1)
+	var fileName = path.substr(path.find_last("/") + 1, path.length() - path.find_last("/") - 1)
 	var dotPos = fileName.find_last(".")
 	if dotPos != -1:
-		fileName = fileName.substr(0,dotPos)
+		fileName = fileName.substr(0, dotPos)
 	return fileName
 
 
@@ -104,7 +105,7 @@ func _loadAtlasTex(path, atlas):
 
 func save_files(source_file, save_path, options):
 	var dest_path = save_path + "." + get_save_extension()
-	var map = options.json_map if import_options_preset == AtlasParser.FORMAT_TEXTURE_JSON else options.xml_map
+	var map = options.json_map if import_options_preset == AtlasParser.FORMAT_TEXTURE_PACKER_JSON else options.xml_map
 
 	if !map:
 		printerr(MESSAGE_PREFIX + "ERROR: No map specified in Texture Atlas importer!")
@@ -124,35 +125,41 @@ func save_files(source_file, save_path, options):
 	if tex_err != OK:
 		return tex_err
 
-	var tarDir = _getParentDir(source_file)
+	var target_dir = _getParentDir(source_file)
 
 	# Remove existing atlas textures
+	_remove_existing_atlas_textures(source_file, target_dir)
+
+	# Create new atlas textures
+	var err = _add_atlas_textures(source_file)
+
+	return err
+
+func _remove_existing_atlas_textures(source_file, target_dir):
 	var dir = Directory.new()
-	if dir.open(tarDir) == OK:
+	if dir.open(target_dir) == OK:
 		dir.list_dir_begin()
 		var f = dir.get_next()
 		while f.length():
-			if f.begins_with(str(_getFileName(source_file), ".")) and f.ends_with(".atlastex") and dir.file_exists(f):
+			if f.begins_with(str(_getFileName(source_file), ".")) and f.ends_with(atlas_texture_extension) and dir.file_exists(f):
 				dir.remove(f)
-				print(MESSAGE_PREFIX + "Remove: ",f)
+				print(MESSAGE_PREFIX + "Remove: ", f)
 			f = dir.get_next()
 
+func _add_atlas_textures(source_file):
 	var err = OK
-	# Generate new atlas textures
 	for s in atlas.sprites:
 		var atex = AtlasTexture.new()
-		var ap = str(tarDir, "/", _getFileName(source_file), ".", _getFileName(s.name),".atlastex")
+		var ap = str(tarDir, "/", _getFileName(source_file), ".", _getFileName(s.name), atlas_texture_extension)
 		atex.set_path(ap)
 		atex.set_name(_getFileName(s.name))
 		atex.set_atlas(tex)
 		atex.set_region(s.region)
 		err = ResourceSaver.save(ap, atex)
-		if err != OK:
-			return err
-		else:
+		if err == OK:
 			print("Add: ", ap)
+		return err
 
-	return err
 
 func import(source_file, save_path, options, r_platform_variants, r_gen_files):
 	var file = File.new()

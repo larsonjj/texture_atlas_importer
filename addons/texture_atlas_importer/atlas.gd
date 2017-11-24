@@ -1,10 +1,9 @@
 tool
 extends GDScript
 
-const FORMAT_TEXTURE_PACKER_XML  = 0
-const FORMAT_TEXTURE_JSON = 1
-const FORMAT_ATTILA_JSON = 2
-const FORMAT_KENNEY_SPRITESHEET = 3
+const FORMAT_TEXTURE_PACKER_XML = 0
+const FORMAT_TEXTURE_PACKER_JSON = 1
+const FORMAT_KENNEY_XML = 2
 
 var imagePath = ""
 var width = 0
@@ -24,21 +23,19 @@ func loadFromFile(path, format):
 	file.open(path, File.READ)
 	if file.is_open():
 		var fileContent = file.get_as_text()
-		parse(fileContent, format)
+		_parse(fileContent, format)
 	file.close()
 	return self
 
-func parse(fileContent, format):
+func _parse(fileContent, format):
 	var atlas = null
 	self.sprites.clear()
 	if format == FORMAT_TEXTURE_PACKER_XML:
 		atlas = _parseTexturePackerXML(fileContent)
-	elif format == FORMAT_TEXTURE_JSON:
+	elif format == FORMAT_TEXTURE_PACKER_JSON:
 		atlas = _parseTexturePackerJson(fileContent)
-	elif format == FORMAT_ATTILA_JSON:
-		atlas = _parseAttilaJson(fileContent)
-	elif format == FORMAT_KENNEY_SPRITESHEET:
-		atlas = _parseKenneySpritsheet(fileContent)
+	elif format == FORMAT_KENNEY_XML:
+		atlas = _parseKenneyXML(fileContent)
 	if atlas != null:
 		if atlas.has("imagePath"):
 			self.imagePath = atlas["imagePath"]
@@ -144,47 +141,9 @@ func _parseTexturePackerJson(jsonContent):
 				sprites.append(sprite)
 	return atlas
 
-func _parseAttilaJson(jsonContent):
+func _parseKenneyXML(xmlContent):
 	"""
-	Parse Atlas from json content which is exported from Attila
-	"""
-	var atlas = null
-	var sprites = []
-
-	var jsonParser = parse_json(jsonContent)
-	if typeof(jsonParser) == TYPE_DICTIONARY:
-		atlas = {}
-		var keys = jsonParser.keys()
-		if keys.size() > 0:
-			if jsonParser[keys[0]].has("dst") and jsonParser[keys[0]].has("hash"):
-				atlas["imagePath"] = jsonParser[keys[0]]["dst"]
-				atlas["sprites"] = sprites
-				for key in keys:
-					var sprite = {}
-					var f = jsonParser[key]
-					sprite["name"] = key
-					sprite["x"] = f["x"]
-					sprite["y"] = f["y"]
-					sprite["width"] = f["w"]
-					sprite["height"] = f["h"]
-					sprite["pivotX"] = 0
-					sprite["pivotY"] = 0
-					sprite["orignX"] = 0
-					sprite["orignY"] = 0
-					sprite["orignWidth"] = f["w"]
-					sprite["orignHeight"] = f["h"]
-					sprite["rotation"] = -deg2rad(f["rotate"])
-					if f["rotate"] == 90:
-						sprite["width"] = f["h"]
-						sprite["height"] = f["w"]
-					sprites.append(sprite)
-				atlas["width"] = 0
-				atlas["height"] = 0
-	return atlas
-
-func _parseKenneySpritsheet(xmlContent):
-	"""
-	Parse Atlas from XML content which is exported with TexturePacker as "XML(generic)"
+	Parse Atlas from XML content which is in a Kenney Spritesheet format
 	"""
 	var atlas = null
 	var sprites = []
@@ -197,9 +156,8 @@ func _parseKenneySpritsheet(xmlContent):
 		while(err != ERR_FILE_EOF):
 			if xmlParser.get_node_type() == xmlParser.NODE_ELEMENT:
 				if xmlParser.get_node_name() == "TextureAtlas":
+					# NOTE: Kenney XML file <TextureAtlas> tags don't seem to provide height or width
 					atlas["imagePath"] = xmlParser.get_named_attribute_value("imagePath")
-					# atlas["width"] = xmlParser.get_named_attribute_value("width")
-					# atlas["height"] = xmlParser.get_named_attribute_value("height")
 				elif xmlParser.get_node_name() == "SubTexture":
 					var sprite = {}
 					sprite["name"] = xmlParser.get_named_attribute_value("name")
