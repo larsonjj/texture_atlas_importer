@@ -131,7 +131,7 @@ func save_files(source_file, save_path, options):
 	_remove_existing_atlas_textures(source_file, target_dir)
 
 	# Create new atlas textures
-	var err = _add_atlas_textures(source_file)
+	var err = _add_atlas_textures(source_file, target_dir, atlas, tex)
 
 	return err
 
@@ -146,11 +146,11 @@ func _remove_existing_atlas_textures(source_file, target_dir):
 				print(MESSAGE_PREFIX + "Remove: ", f)
 			f = dir.get_next()
 
-func _add_atlas_textures(source_file):
+func _add_atlas_textures(source_file, target_dir, atlas, tex):
 	var err = OK
 	for s in atlas.sprites:
 		var atex = AtlasTexture.new()
-		var ap = str(tarDir, "/", _getFileName(source_file), ".", _getFileName(s.name), atlas_texture_extension)
+		var ap = str(target_dir, "/", _getFileName(source_file), ".", _getFileName(s.name), atlas_texture_extension)
 		atex.set_path(ap)
 		atex.set_name(_getFileName(s.name))
 		atex.set_atlas(tex)
@@ -158,7 +158,7 @@ func _add_atlas_textures(source_file):
 		err = ResourceSaver.save(ap, atex)
 		if err == OK:
 			print("Add: ", ap)
-		return err
+	return err
 
 
 func import(source_file, save_path, options, r_platform_variants, r_gen_files):
