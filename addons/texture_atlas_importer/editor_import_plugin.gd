@@ -157,7 +157,7 @@ func _add_atlas_textures(source_file, target_dir, atlas, tex):
 		atex.set_region(s.region)
 		err = ResourceSaver.save(ap, atex)
 		if err == OK:
-			print("Add: ", ap)
+			print(MESSAGE_PREFIX + "Add: ", ap)
 	return err
 
 
